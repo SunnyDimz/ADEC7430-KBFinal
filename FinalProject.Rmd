@@ -1,0 +1,86 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+# load the data
+rm(list=ls())
+setwd("/Users/dimz/Desktop/Boston College/ADEC7430-Applied Machine Learning/")
+charity <- read.csv("Final/charity.csv") # load the "charity.csv" file
+attach(charity)
+```
+
+```{r}
+#1 - exploratory data analysis
+library(psych)
+describe(charity)
+summary(charity)
+charity = charity[,-1]
+colnames(charity)
+str(charity)
+
+#correlation
+library(corrplot)
+library(corrgram)
+par(mfrow=c(1,1))
+corrplot(corrgram(charity), method="square")
+library(ggplot2)
+ctrain<- subset(charity,charity$part=="train")
+ctest<- subset(charity,charity$part=="test")
+cvalid<- subset(charity,charity$part=="valid")
+
+#visually represent the numeric variables
+library(purrr)
+library(tidyr)
+ctrain[,-1] %>%
+  keep(is.numeric) %>%
+  gather() %>%
+  ggplot(aes(value)) + 
+  facet_wrap(~ key, scales = "free") + 
+  geom_density()
+```
+
+```{r}
+#visually represent the categorical variables
+charity.cat <- c("reg1","reg2","reg3","reg4","home","chld", "hinc", "genf","wrat", "donr","part")
+
+ctrain[,charity.cat] %>%
+  gather() %>%
+  ggplot(aes(value)) + 
+  facet_wrap(~key, scales = "free") + 
+  geom_bar()
+par(mfrow=c(5,5))
+boxplot(ctrain$agif)
+boxplot(ctrain$avhv)
+boxplot(ctrain$chld)
+boxplot(ctrain$damt)
+boxplot(ctrain$donr)
+boxplot(ctrain$genf)
+boxplot(ctrain$hinc)
+boxplot(ctrain$home)
+boxplot(ctrain$inca)
+boxplot(ctrain$incm)
+boxplot(ctrain$lgif)
+boxplot(ctrain$npro)
+boxplot(ctrain$plow)
+boxplot(ctrain$reg2)
+boxplot(ctrain$reg3)
+boxplot(ctrain$reg4)
+boxplot(ctrain$tdon) 
+boxplot(ctrain$tgif)
+boxplot(ctrain$tlag)
+boxplot(ctrain$wrat)
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
