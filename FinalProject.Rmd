@@ -15,9 +15,29 @@ charity <- read.csv("Final/charity.csv") # load the "charity.csv" file
 attach(charity)
 ```
 
+## Libraries
+
+```{r}
+RNGversion("3.5.3")
+library(psych)
+library(corrplot)
+library(corrgram)
+library(ggplot2)
+library(purrr)
+library(tidyr)
+library(boot)
+library(ISLR)
+library(lars)
+library(leaps)
+library(glmnet)
+library(pls)
+```
+
+
+
 ```{r}
 #1 - exploratory data analysis
-library(psych)
+
 describe(charity)
 summary(charity)
 charity = charity[,-1]
@@ -25,18 +45,16 @@ colnames(charity)
 str(charity)
 
 #correlation
-library(corrplot)
-library(corrgram)
+
 par(mfrow=c(1,1))
 corrplot(corrgram(charity), method="square")
-library(ggplot2)
+
 ctrain<- subset(charity,charity$part=="train")
 ctest<- subset(charity,charity$part=="test")
 cvalid<- subset(charity,charity$part=="valid")
 
 #visually represent the numeric variables
-library(purrr)
-library(tidyr)
+
 ctrain[,-1] %>%
   keep(is.numeric) %>%
   gather() %>%
@@ -80,13 +98,7 @@ boxplot(ctrain$wrat)
 ```{r}
 ##charity <- read.csv("~/Desktop/School work/BC Data Analytics/ADEC7430-KBFinal/charity.csv")
 ##View(charity)
-RNGversion("3.5.3")
-library(boot)
-library(ISLR)
-library(lars)
-library(leaps)
-library(glmnet)
-library(pls)
+
 ```
 
 
