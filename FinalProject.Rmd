@@ -44,11 +44,26 @@ ctrain[,-1] %>%
   facet_wrap(~ key, scales = "free") + 
   geom_density()
 ```
+```{r}
+ctrain[,-1] %>%
+  keep(is.numeric) %>%
+  gather() %>%
+  ggplot(aes(log(value))) + 
+  facet_wrap(~ key, scales = "free") + 
+  geom_density()
+```
+```{r}
+for( p in c("reg1", "reg2" ,"reg3", "reg4", "home", "chld", "hinc", "genf", "wrat" )){
+  print(p)
+  with(ctrain,print(table(donr,get(p))))
+}
+```
+
 
 ```{r}
 #visually represent the categorical variables
 charity.cat <- c("reg1","reg2","reg3","reg4","home","chld", "hinc", "genf","wrat", "donr","part")
-
+charity[charity.cat] <- lapply(charity[charity.cat], factor)
 ctrain[,charity.cat] %>%
   gather() %>%
   ggplot(aes(value)) + 
@@ -133,7 +148,115 @@ data.valid.std.y <- data.frame(x.valid.std[c.valid==1,], damt=y.valid) # to pred
 x.test.std <- t((t(x.test)-x.train.mean)/x.train.sd) # standardize using training mean and sd
 data.test.std <- data.frame(x.test.std)
 ```
+```{r}
+#Set up train,test, and validation
+x.train <- ctrain[,1:21]
+y.train <- ctrain[ctrain$donr==1,22]
 
+x.valid <- cvalid[,1:21]
+y.valid <- cvalid[cvalid$donr==1,22]
+
+x.test <- ctest[,1:21]
+
+#standardize
+x.train.mean <- apply(x.train, 2, mean)
+x.train.sd <- apply(x.train, 2, sd)
+x.train.std <- t((t(x.train)-x.train.mean)/x.train.sd) # standardize to have zero mean and unit sd
+apply(x.train.std, 2, mean) # check zero mean
+apply(x.train.std, 2, sd) # check unit sd
+data.train.std.c <- data.frame(x.train.std, donr=ctrain[,21]) # to classify donr
+data.train.std.y <- data.frame(x.train.std[ctrain$donr==1,], damt=y.train) # to predict damt when donr=1
+
+x.valid.std <- t((t(x.valid)-x.train.mean)/x.train.sd) # standardize using training mean and sd
+data.valid.std.c <- data.frame(x.valid.std, donr=cvalid$donr) # to classify donr
+data.valid.std.y <- data.frame(x.valid.std[cvalid$donr==1,], damt=y.valid) # to predict damt when donr=1
+
+x.test.std <- t((t(x.test)-x.train.mean)/x.train.sd) # standardize using training mean and sd
+data.test.std <- data.frame(x.test.std)
+
+```
+
+#Classification Modeling
+```{r}
+library(gam)
+
+gam.full <- gam(donr~.,data.train.std.c, family = "gaussian") 
+summary(gam.full)
+gam.lr <- gam(donr~reg1+reg2+home+chld+hinc+wrat+plow+npro+tgif+
+                tdon+tlag+chld+hinc+wrat+avhv+incm+npro*tgif,
+              data.train.std.c, family = "gaussian")
+
+summary(gam.lr)
+post.valid.gam.lr<-predict(gam.lr,data.valid.std.c) # n.valid post probs
+
+profit.gam.lr <- cumsum(14.5*c.valid[order(post.valid.gam.lr, decreasing=T)]-2)
+plot(profit.gam.lr, main = "GAM.LR Plot") # see how profits change as more mailings are made
+n.mail.valid <- which.max(profit.gam.lr) # number of mailings that maximizes profits
+c(n.mail.valid, max(profit.gam.lr)) # report number of mailings and maximum profit
+#  1697.0 204608.5
+cutoff.gam.lr <- sort(post.valid.gam.lr, decreasing=T)[n.mail.valid+1] # set cutoff based on n.mail.valid
+chat.valid.gam.lr <- ifelse(post.valid.gam.lr>cutoff.gam.lr, 1, 0) # mail to everyone above the cutoff
+table(chat.valid.gam.lr, c.valid) # classification table
+```
+```{r}
+library(MASS)
+lda.1 <- lda(donr ~ reg1+reg2+reg3+reg4+home+chld+hinc+genf+wrat+avhv+incm+inca+plow+npro+tgif+rgif+tdon+tlag+agif, data.train.std.c)
+summary(lda.1)
+
+model.lda <- lda(donr ~reg1 + reg2 + hinc + I(hinc^2)+incm+tgif+
+                   wrat + npro + tdon + tlag+ chld +plow, data.train.std.c)
+summary(model.lda)
+
+valid.lda <- predict(model.lda, data.valid.std.c)$posterior[,2] # n.valid.c post probs
+
+profit.lda <- cumsum(14.5*c.valid[order(valid.lda, decreasing=T)]-2)
+plot(profit.lda, main = "LDA Plot") # see how profits change as more mailings are made
+n.mail.valid <- which.max(profit.lda) # number of mailings that maximizes profits
+c(n.mail.valid, max(profit.lda)) # report number of mailings and maximum profit
+#1636.0 204730.5
+cutoff.lda <- sort(valid.lda, decreasing=T)[n.mail.valid+1] # set cutoff based on n.mail.valid
+chat.valid.lda <- ifelse(valid.lda>cutoff.lda, 1, 0) # mail to everyone above the cutoff
+table(chat.valid.lda, c.valid) # classification table
+```
+
+```{r}
+library(MASS)
+model.qda.full <- qda(donr ~ reg1+reg2+reg3+reg4+home+chld+hinc+genf+wrat+avhv+incm+inca+plow+npro+tgif+rgif+tdon+tlag+agif, data.train.std.c)
+summary(model.qda.full)
+
+model.qda <- qda(donr ~reg1 + reg2 + hinc +tgif+
+                   wrat + npro + tdon + tlag+ chld+home+
+                   +npro*tgif, data.train.std.c)
+summary(model.qda)
+
+valid.qda <- predict(model.qda, data.valid.std.c)$posterior[,2] # n.valid.c post probs
+profit.qda <- cumsum(14.5*c.valid[order(valid.qda, decreasing=T)]-2)
+plot(profit.qda, main = "QDA Plot") # see how profits change as more mailings are made
+n.mail.valid <- which.max(profit.qda) # number of mailings that maximizes profits
+c(n.mail.valid, max(profit.qda)) # report number of mailings and maximum profit
+#2017.0 203968.5
+cutoff.qda <- sort(valid.qda, decreasing=T)[n.mail.valid+1] # set cutoff based on n.mail.valid
+chat.valid.qda <- ifelse(valid.qda>cutoff.qda, 1, 0) # mail to everyone above the cutoff
+table(chat.valid.qda, c.valid) # classification table
+```
+```{r}
+library(class)
+KNNVars <- c("reg1","reg2","reg3","reg4","home","chld", "hinc", "genf","wrat","plow","npro",
+             "tgif","tdon","tlag")
+
+post.valid.knn<-knn(data.train.std.c[,KNNVars],data.valid.std.c[,KNNVars],c.train,k = 5)
+
+profit.knn <- cumsum(14.5*c.valid[order(post.valid.knn, decreasing=T)]-2)
+plot(profit.knn, main = "KNN Plot") # see how profits change as more mailings are made
+n.mail.valid <- which.max(profit.knn) # number of mailings that maximizes profits
+c(n.mail.valid, max(profit.knn)) # report number of mailings and maximum profit
+#2015.0 203972.5
+cutoff.knn <- sort(post.valid.knn, decreasing=T)[n.mail.valid+1] # set cutoff based on n.mail.valid
+table(post.valid.knn, c.valid) # classification table
+knnError <- mean(post.valid.knn != c.valid)
+knnError
+
+```
 
 ```{r}
 ##### PREDICTION MODELING ######
