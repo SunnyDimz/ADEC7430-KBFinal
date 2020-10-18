@@ -314,15 +314,14 @@ gam.lr <- gam(donr~reg1+reg2+home+chld+hinc+wrat+plow+npro+tgif+
                 tdon+tlag+chld+hinc+wrat+avhv+incm+npro*tgif,
               data.train.std.c, family = "gaussian")
 summary(gam.lr)
-post.valid.gam.lr<-predict(gam.lr,data.valid.std.c) # n.valid post probs
+post.valid.gam.lr<-predict(gam.lr,data.valid.std.c) 
 profit.gam.lr <- cumsum(14.5*c.valid[order(post.valid.gam.lr, decreasing=T)]-2)
-plot(profit.gam.lr, main = "GAM.LR Plot") # see how profits change as more mailings are made
-n.mail.valid <- which.max(profit.gam.lr) # number of mailings that maximizes profits
-c(n.mail.valid, max(profit.gam.lr)) # report number of mailings and maximum profit
-#  1697.0 204608.5
-cutoff.gam.lr <- sort(post.valid.gam.lr, decreasing=T)[n.mail.valid+1] # set cutoff based on n.mail.valid
-chat.valid.gam.lr <- ifelse(post.valid.gam.lr>cutoff.gam.lr, 1, 0) # mail to everyone above the cutoff
-table(chat.valid.gam.lr, c.valid) # classification table
+plot(profit.gam.lr, main = "GAM.LR Plot") 
+n.mail.valid <- which.max(profit.gam.lr) 
+c(n.mail.valid, max(profit.gam.lr)) 
+cutoff.gam.lr <- sort(post.valid.gam.lr, decreasing=T)[n.mail.valid+1] 
+chat.valid.gam.lr <- ifelse(post.valid.gam.lr>cutoff.gam.lr, 1, 0) 
+table(chat.valid.gam.lr, c.valid) 
 
 ```
 
@@ -333,15 +332,15 @@ model.qda.full <- qda(donr ~ reg1+reg2+reg3+reg4+home+chld+hinc+genf+wrat+avhv+i
 summary(model.qda.full)
 model.qda <- qda(donr ~reg1 + reg2 + hinc +tgif+wrat + npro + tdon + tlag+ chld+home +npro*tgif, data.train.std.c)
 summary(model.qda)
-valid.qda <- predict(model.qda, data.valid.std.c)$posterior[,2] # n.valid.c post probs
+valid.qda <- predict(model.qda, data.valid.std.c)$posterior[,2] 
 profit.qda <- cumsum(14.5*c.valid[order(valid.qda, decreasing=T)]-2)
-plot(profit.qda, main = "QDA Plot") # see how profits change as more mailings are made
-n.mail.valid <- which.max(profit.qda) # number of mailings that maximizes profits
-c(n.mail.valid, max(profit.qda)) # report number of mailings and maximum profit
-#2017.0 203968.5
-cutoff.qda <- sort(valid.qda, decreasing=T)[n.mail.valid+1] # set cutoff based on n.mail.valid
-chat.valid.qda <- ifelse(valid.qda>cutoff.qda, 1, 0) # mail to everyone above the cutoff
-table(chat.valid.qda, c.valid) # classification table
+plot(profit.qda, main = "QDA Plot") 
+n.mail.valid <- which.max(profit.qda) 
+c(n.mail.valid, max(profit.qda)) 
+
+cutoff.qda <- sort(valid.qda, decreasing=T)[n.mail.valid+1] 
+chat.valid.qda <- ifelse(valid.qda>cutoff.qda, 1, 0) 
+table(chat.valid.qda, c.valid) 
 ```
 
 ## K-nearest neighbor
@@ -352,12 +351,11 @@ KNNVars <- c("reg1","reg2","reg3","reg4","home","chld", "hinc", "genf","wrat","p
              "tgif","tdon","tlag")
 post.valid.knn<-knn(data.train.std.c[,KNNVars],data.valid.std.c[,KNNVars],c.train,k = 5)
 profit.knn <- cumsum(14.5*c.valid[order(post.valid.knn, decreasing=T)]-2)
-plot(profit.knn, main = "KNN Plot") # see how profits change as more mailings are made
-n.mail.valid <- which.max(profit.knn) # number of mailings that maximizes profits
-c(n.mail.valid, max(profit.knn)) # report number of mailings and maximum profit
-#2015.0 203972.5
-cutoff.knn <- sort(post.valid.knn, decreasing=T)[n.mail.valid+1] # set cutoff based on n.mail.valid
-table(post.valid.knn, c.valid) # classification table
+plot(profit.knn, main = "KNN Plot") 
+n.mail.valid <- which.max(profit.knn) 
+c(n.mail.valid, max(profit.knn)) 
+cutoff.knn <- sort(post.valid.knn, decreasing=T)[n.mail.valid+1] 
+table(post.valid.knn, c.valid) 
 knnError <- mean(post.valid.knn != c.valid)
 knnError
 ```
@@ -415,14 +413,31 @@ std.err.pred3
 ## The mpe is very slightly higher for model three than model two.
 ```
 
-
+## Prediction model four: Best Subset Selection
 
 ```{r}
-## Prediction model four: 
+
 model.pred4<-regsubsets(damt~., data.train.std.y)
-summary(model.pred4)
-low.bic.pred4<-which.min(model.pred4$bic)
-low.bic.pred4
+summary.model.pred4<-summary(model.pred4)
+summary.model.pred4$bic
+min.bic.pred4<-which.min(summary.model.pred4$bic)
+min.bic.pred4
+## 8 
+coef(model.pred4, 8)
+
+predict.regsubsets <- function(object ,newdata ,id ,...){
+ form=as.formula (object$call [[2]])
+ mat=model.matrix (form ,newdata )
+ coefi =coef(object ,id=id)
+ xvars =names (coefi )
+ mat[,xvars ]%*% coefi
+ }
+pred.valid.pred4<-predict.regsubsets(model.pred4,newdata = data.valid.std.y, id = 8 )
+
+mpe.pred4<-mean((y.valid - pred.valid.pred4)^2) 
+mpe.pred4
+std.err.pred4<-sd((y.valid - pred.valid.pred4)^2)/sqrt(n.valid.y) 
+std.err.pred4
 ```
 
 
@@ -504,18 +519,47 @@ std.err.pred7
 ## 0.1696325
 ```
 
-## Prediction Model 8: Ridge Regression
+## Prediction Models 8 and 9: Ridge Regression and Lasso Regression
 
 ```{r}
-
 x=model.matrix(damt~., data.train.std.y)[,-1]
 y=data.train.std.y$damt
 lambdas <- 10^seq(10, -2, length = 100)
 lambda.model.pred8<- cv.glmnet(x, y, alpha = 0, lambda = lambdas)
 plot(lambda.model.pred8)
+best.lambda<-lambda.model.pred8$lambda.min
+best.lambda
+##0.023
+fit.model.pred8<-lambda.model.pred8$glmnet.fit
+summary(fit.model.pred8)
+new_x<-model.matrix(damt~., data.valid.std.y)[,-1]
+pred.valid.pred8 <- predict(fit.model.pred8, newx = new_x, s = best.lambda)
+mpe.pred8<-mean((y.valid - pred.valid.pred8)^2) 
+mpe.pred8
+std.err.pred8<-sd((y.valid - pred.valid.pred8)^2)/sqrt(n.valid.y) 
+std.err.pred8
+
+## Model 9 - Lasso
+
+lambda.model.pred9<- cv.glmnet(x, y, alpha = 1, lambda = lambdas)
+plot(lambda.model.pred9)
+best.lambda9<-lambda.model.pred9$lambda.min
+best.lambda9
+##0.01
+fit.model.pred9<-lambda.model.pred9$glmnet.fit
+summary(fit.model.pred9)
+
+pred.valid.pred9 <- predict(fit.model.pred9, newx = new_x, s = best.lambda)
+coeff.pred9<-predict(fit.model.pred9, type = "coefficients", s = best.lambda)
+coeff.pred9
+
+mpe.pred9<-mean((y.valid - pred.valid.pred9)^2) 
+mpe.pred9
+std.err.pred9<-sd((y.valid - pred.valid.pred9)^2)/sqrt(n.valid.y) 
+std.err.pred9
 ```
 
-## Prediction Model 9: Lasso Regression
+## Model 10 - transformed variables,  OLS model
 
 ```{r}
 
