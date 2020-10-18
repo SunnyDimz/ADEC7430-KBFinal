@@ -3,9 +3,11 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+# ADEC 7430 Final Project
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+## Dmitriy Borzhkovskiy, Kayla Burt, and Ellison Taylor, due 10/18/2020
+
+## Create working directy, load charity data set
 
 ```{r}
 # load the data
@@ -15,7 +17,7 @@ charity <- read.csv("Final/charity.csv") # load the "charity.csv" file
 attach(charity)
 ```
 
-## Libraries
+## Call appropriate Libraries
 
 ```{r}
 RNGversion("3.5.3")
@@ -34,10 +36,9 @@ library(pls)
 ```
 
 
+## 1 - exploratory data analysis
 
 ```{r}
-#1 - exploratory data analysis
-
 describe(charity)
 summary(charity)
 charity = charity[,-1]
@@ -52,8 +53,12 @@ corrplot(corrgram(charity), method="square")
 ctrain<- subset(charity,charity$part=="train")
 ctest<- subset(charity,charity$part=="test")
 cvalid<- subset(charity,charity$part=="valid")
+```
 
-#visually represent the numeric variables
+##visually represent the numeric variables
+
+```{r}
+
 
 ctrain[,-1] %>%
   keep(is.numeric) %>%
@@ -63,8 +68,10 @@ ctrain[,-1] %>%
   geom_density()
 ```
 
+## Visually represent the categorical variables
+
 ```{r}
-#visually represent the categorical variables
+
 charity.cat <- c("reg1","reg2","reg3","reg4","home","chld", "hinc", "genf","wrat", "donr","part")
 
 ctrain[,charity.cat] %>%
@@ -101,6 +108,10 @@ boxplot(ctrain$wrat)
 
 ```
 
+
+
+
+### From Provided Code: Transformation of 'avhv', create training and test sets
 
 ```{r}
 # predictor transformations
@@ -146,53 +157,45 @@ x.test.std <- t((t(x.test)-x.train.mean)/x.train.sd) # standardize using trainin
 data.test.std <- data.frame(x.test.std)
 ```
 
+## PREDICTION MODELING 
+
+###From Provided Code: Least squares regression
 
 ```{r}
-##### PREDICTION MODELING ######
-
-# Least squares regression
-
+## Model 1
 model.pred1 <- lm(damt ~ reg1 + reg2 + reg3 + reg4 + home + chld + hinc + genf + wrat + 
                   avhv + incm + inca + plow + npro + tgif + lgif + rgif + tdon + tlag + agif, 
                 data.train.std.y)
 summary(model.pred1)
-```
 
-```{r}
-pred.valid.pred1 <- predict(model.pred1, newdata = data.valid.std.y) # validation predictions
-mean((y.valid - pred.valid.pred1)^2) # mean prediction error
-# 1.867523
-sd((y.valid - pred.valid.pred1)^2)/sqrt(n.valid.y) # std error
-# 0.1696615
+pred.valid.pred1 <- predict(model.pred1, newdata = data.valid.std.y) 
+mean((y.valid - pred.valid.pred1)^2) 
 
-# drop wrat for illustrative purposes
+sd((y.valid - pred.valid.pred1)^2)/sqrt(n.valid.y) 
+
+
+## Model 2
 model.pred2 <- lm(damt ~ reg1 + reg2 + reg3 + reg4 + home + chld + hinc + genf + 
                   avhv + incm + inca + plow + npro + tgif + lgif + rgif + tdon + tlag + agif, 
                 data.train.std.y)
 summary(model.pred2)
 
 
-pred.valid.pred2 <- predict(model.pred2, newdata = data.valid.std.y) # validation predictions
-mean((y.valid - pred.valid.pred2)^2) # mean prediction error
-# 1.867433
-sd((y.valid - pred.valid.pred2)^2)/sqrt(n.valid.y) # std error
-# 0.1696498
+pred.valid.pred2 <- predict(model.pred2, newdata = data.valid.std.y) 
+mean((y.valid - pred.valid.pred2)^2)
 
-# Results
+sd((y.valid - pred.valid.pred2)^2)/sqrt(n.valid.y) 
 
-# MPE  Model
-# 1.867523 LS1
-# 1.867433 LS2
-
-# select model.ls2 since it has minimum mean prediction error in the validation sample
-
-yhat.test <- predict(model.pred2, newdata = data.test.std) # test predictions
+yhat.test <- predict(model.pred2, newdata = data.test.std) 
 
 ```
 
-## Our Prediction Models
+## Our Prediction Models: OLS, Best subset selection with k-fold cv, Principal Components Regression, Partial Least Squares, Ridge Regression, Lasso Regression
+
+### Third OLS Regression: Model three only includes variables whose coefficients had P-values below 0.05 in model two.
+
 ```{r}
-## Third OLS Regression: Model three only includes variables whose coefficients had P-values below 0.05 in model two.
+
 model.pred3<- lm(damt ~ reg3 + reg4 + home + chld + hinc + genf + 
                  incm +  plow + npro + rgif + tdon + agif, 
                 data.train.std.y)
@@ -206,6 +209,8 @@ std.err.pred3
 ## The mpe is very slightly higher for model three than model two.
 ```
 
+
+
 ```{r}
 ## Prediction model four: 
 model.pred4<-regsubsets(damt~., data.train.std.y)
@@ -214,8 +219,11 @@ low.bic.pred4<-which.min(model.pred4$bic)
 low.bic.pred4
 ```
 
-```{r}
+
 ## Prediction model five: Best subset selection, k-fold cross validation (k=5), regressor = number of children
+
+```{r}
+
 cv.error.pred5=rep(0,5)
 for (i in 1:5) {
   glm.model.pred5<-glm(damt ~ poly(chld, i), data= data.train.std.y)
@@ -252,6 +260,8 @@ std.err.pred5.2
 
 ```
 
+##Prediction model 6: Principal Components Regression:
+
 ```{r}
 ##Prediction model 6: Principal Components Regression:
 model.pred6<-pcr(damt~., data=data.train.std.y ,scale=TRUE ,validation ="CV")
@@ -268,6 +278,8 @@ std.err.pred6<-sd((y.valid - pred.valid.pred6)^2)/sqrt(n.valid.y)
 std.err.pred6
 ## .16966
 ```
+
+## Prediction Model 7: Partial Least Squares
 
 ```{r}
 ## Prediction Model 7: Partial Least Squares
@@ -286,14 +298,35 @@ std.err.pred7
 ## 0.1696325
 ```
 
-```{r}
 ## Prediction Model 8: Ridge Regression
+
+```{r}
+
 x=model.matrix(damt~., data.train.std.y)[,-1]
 y=data.train.std.y$damt
 lambdas <- 10^seq(10, -2, length = 100)
 lambda.model.pred8<- cv.glmnet(x, y, alpha = 0, lambda = lambdas)
 plot(lambda.model.pred8)
 ```
+
+
+## Final Results
+
+### Save test set classifications and predictions in cvs file. Name file with initals
+
+```{r}
+
+# Save final results for both classification and regression
+
+length(chat.test)
+length(yhat.test)
+chat.test[1:10] 
+yhat.test[1:10] 
+
+ip <- data.frame(chat=chat.test, yhat=yhat.test)
+write.csv(ip, file="ABC.csv", row.names=FALSE) 
+```
+
 
 
 ```
