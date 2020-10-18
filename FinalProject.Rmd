@@ -33,6 +33,9 @@ library(lars)
 library(leaps)
 library(glmnet)
 library(pls)
+library(gam)
+library(MASS)
+library(class)
 ```
 
 
@@ -299,6 +302,64 @@ c(n.mail.valid, max(profit.cl7))
 cutoff.cl7 <- sort(post.valid.cl7 , decreasing=T)[n.mail.valid+1] 
 chat.valid.cl7<- ifelse(post.valid.cl7>cutoff.cl7 , 1, 0) 
 table(chat.valid.cl7 , c.valid) 
+```
+
+## Log GAM
+
+```{r}
+
+gam.full <- gam(donr~.,data.train.std.c, family = "gaussian") 
+summary(gam.full)
+gam.lr <- gam(donr~reg1+reg2+home+chld+hinc+wrat+plow+npro+tgif+
+                tdon+tlag+chld+hinc+wrat+avhv+incm+npro*tgif,
+              data.train.std.c, family = "gaussian")
+summary(gam.lr)
+post.valid.gam.lr<-predict(gam.lr,data.valid.std.c) # n.valid post probs
+profit.gam.lr <- cumsum(14.5*c.valid[order(post.valid.gam.lr, decreasing=T)]-2)
+plot(profit.gam.lr, main = "GAM.LR Plot") # see how profits change as more mailings are made
+n.mail.valid <- which.max(profit.gam.lr) # number of mailings that maximizes profits
+c(n.mail.valid, max(profit.gam.lr)) # report number of mailings and maximum profit
+#  1697.0 204608.5
+cutoff.gam.lr <- sort(post.valid.gam.lr, decreasing=T)[n.mail.valid+1] # set cutoff based on n.mail.valid
+chat.valid.gam.lr <- ifelse(post.valid.gam.lr>cutoff.gam.lr, 1, 0) # mail to everyone above the cutoff
+table(chat.valid.gam.lr, c.valid) # classification table
+
+```
+
+## QDA Model
+
+```{r}
+model.qda.full <- qda(donr ~ reg1+reg2+reg3+reg4+home+chld+hinc+genf+wrat+avhv+incm+inca+plow+npro+tgif+rgif+tdon+tlag+agif, data.train.std.c)
+summary(model.qda.full)
+model.qda <- qda(donr ~reg1 + reg2 + hinc +tgif+wrat + npro + tdon + tlag+ chld+home +npro*tgif, data.train.std.c)
+summary(model.qda)
+valid.qda <- predict(model.qda, data.valid.std.c)$posterior[,2] # n.valid.c post probs
+profit.qda <- cumsum(14.5*c.valid[order(valid.qda, decreasing=T)]-2)
+plot(profit.qda, main = "QDA Plot") # see how profits change as more mailings are made
+n.mail.valid <- which.max(profit.qda) # number of mailings that maximizes profits
+c(n.mail.valid, max(profit.qda)) # report number of mailings and maximum profit
+#2017.0 203968.5
+cutoff.qda <- sort(valid.qda, decreasing=T)[n.mail.valid+1] # set cutoff based on n.mail.valid
+chat.valid.qda <- ifelse(valid.qda>cutoff.qda, 1, 0) # mail to everyone above the cutoff
+table(chat.valid.qda, c.valid) # classification table
+```
+
+## K-nearest neighbor
+
+```{r}
+
+KNNVars <- c("reg1","reg2","reg3","reg4","home","chld", "hinc", "genf","wrat","plow","npro",
+             "tgif","tdon","tlag")
+post.valid.knn<-knn(data.train.std.c[,KNNVars],data.valid.std.c[,KNNVars],c.train,k = 5)
+profit.knn <- cumsum(14.5*c.valid[order(post.valid.knn, decreasing=T)]-2)
+plot(profit.knn, main = "KNN Plot") # see how profits change as more mailings are made
+n.mail.valid <- which.max(profit.knn) # number of mailings that maximizes profits
+c(n.mail.valid, max(profit.knn)) # report number of mailings and maximum profit
+#2015.0 203972.5
+cutoff.knn <- sort(post.valid.knn, decreasing=T)[n.mail.valid+1] # set cutoff based on n.mail.valid
+table(post.valid.knn, c.valid) # classification table
+knnError <- mean(post.valid.knn != c.valid)
+knnError
 ```
 
 
