@@ -11,10 +11,9 @@ output: html_notebook
 
 ```{r}
 # load the data
-rm(list=ls())
-setwd("/Users/dimz/Desktop/Boston College/ADEC7430-Applied Machine Learning/")
-charity <- read.csv("Final/charity.csv") # load the "charity.csv" file
-attach(charity)
+#rm(list=ls())
+
+#attach(charity)
 ```
 
 ## Call appropriate Libraries
@@ -36,6 +35,7 @@ library(pls)
 library(gam)
 library(MASS)
 library(class)
+charity <- read.csv("~/Desktop/School work/BC Data Analytics/ADEC7430-KBFinal/charity.csv")
 ```
 
 
@@ -76,7 +76,7 @@ ctrain[,-1] %>%
 ```{r}
 
 charity.cat <- c("reg1","reg2","reg3","reg4","home","chld", "hinc", "genf","wrat", "donr","part")
-
+par(mar=c(1,1,1,1))
 ctrain[,charity.cat] %>%
   gather() %>%
   ggplot(aes(value)) + 
@@ -103,11 +103,6 @@ boxplot(ctrain$tdon)
 boxplot(ctrain$tgif)
 boxplot(ctrain$tlag)
 boxplot(ctrain$wrat)
-
-```
-```{r}
-##charity <- read.csv("~/Desktop/School work/BC Data Analytics/ADEC7430-KBFinal/charity.csv")
-##View(charity)
 
 ```
 
@@ -160,11 +155,9 @@ data.test.std <- data.frame(x.test.std)
 # Classification Models
 
 ## From provided Code:  linear discriminant analysis
-```{r}
 
-model.cl1 <- lda(donr ~ reg1 + reg2 + reg3 + reg4 + home + chld + hinc + I(hinc^2) + genf + wrat + 
-                    avhv + incm + inca + plow + npro + tgif + lgif + rgif + tdon + tlag + agif, 
-                  data.train.std.c) 
+```{r}
+model.cl1 <- lda(donr ~ reg1 + reg2 + reg3 + reg4 + home + chld + hinc + I(hinc^2) + genf + wrat +  avhv + incm + inca + plow + npro + tgif + lgif + rgif + tdon + tlag + agif, data.train.std.c) 
 
 
 post.valid.cl1 <- predict(model.cl1, data.valid.std.c)$posterior[,2] 
@@ -185,8 +178,7 @@ table(chat.valid.cl1, c.valid)
 
 ```{r}
 
-model.log1 <- glm(donr ~ reg1 + reg2 + reg3 + reg4 + home + chld + hinc + I(hinc^2) + genf + wrat + 
-                    avhv + incm + inca + plow + npro + tgif + lgif + rgif + tdon + tlag + agif, 
+model.log1 <- glm(donr ~ reg1 + reg2 + reg3 + reg4 + home + chld + hinc + I(hinc^2) + genf + wrat + avhv + incm + inca + plow + npro + tgif + lgif + rgif + tdon + tlag + agif, 
                   data.train.std.c, family=binomial("logit"))
 
 post.valid.log1 <- predict(model.log1, data.valid.std.c, type="response") 
@@ -559,37 +551,37 @@ std.err.pred9<-sd((y.valid - pred.valid.pred9)^2)/sqrt(n.valid.y)
 std.err.pred9
 ```
 
-## Model 10 - transformed variables,  OLS model
-
-```{r}
-
-```
-
 
 ## Final Results
 
-### Save test set classifications and predictions in cvs file. Name file with initals
+### Save test set classifications and predictions in csv file. Name file with initals
 
 ```{r}
+post.test <- predict(gam.lr, data.test.std, type="response")
+n.mail.valid <- which.max(profit.gam.lr)
+tr.rate <- .1 # typical response rate is .1
+vr.rate <- .5 # whereas validation response rate is .5
+adj.test.1 <- (n.mail.valid/n.valid.c)/(vr.rate/tr.rate) # adjustment for mail yes
+adj.test.0 <- ((n.valid.c-n.mail.valid)/n.valid.c)/((1-vr.rate)/(1-tr.rate)) # adjustment for mail no
+adj.test <- adj.test.1/(adj.test.1+adj.test.0) # scale into a proportion
+n.mail.test <- round(n.test*adj.test, 0) # calculate number of mailings for test set
 
-# Save final results for both classification and regression
+cutoff.test <- sort(post.test, decreasing=T)[n.mail.test+1]
+chat.test <- ifelse(post.test>cutoff.test, 1, 0) # mail to everyone above the cutoff
+yhat.test <- predict(model.pred7, newdata = data.test.std, ncomp =5)
 
 length(chat.test)
 length(yhat.test)
 chat.test[1:10] 
 yhat.test[1:10] 
 
-ip <- data.frame(chat=chat.test, yhat=yhat.test)
-write.csv(ip, file="ABC.csv", row.names=FALSE) 
-```
+
+results<- data.frame(chat=chat.test, yhat=yhat.test)
+write.csv(results, file="db_kb_et.csv", row.names=FALSE)
 
 
 
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
-
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
 
